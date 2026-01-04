@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABSA Labeling Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI',Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f4f4f9;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Toolbar & Controls */
+        .controls {
+            display: flex;
+            justify-content:
+            space-between;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.danger {
+            background: #dc3545; margin-left: 5px;
+        }
+
+        /* Text Area Styles */
+        #text-display {
+            font-size: 18px;
+            line-height: 4;
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            padding: 15px;
+            min-height: 100px;
+            border-radius: 4px;
+            position: relative;
+        }
+        #text-editor {
+            width: 100%;
+            height: 150px;
+            font-size: 18px;
+            padding: 10px;
+            box-sizing: border-box;
+            display: none;
+        }
+
+        /* Highlights */
+        .highlight {
+            padding: 30px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+        .highlight::after {
+            content: attr(data-label);
+            font-size: 10px;
+            position: absolute;
+            top: -12px; left: 0;
+            background: #333;
+            color: white;
+            padding: 1px 3px;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        .highlight:hover {
+            filter: brightness(0.9);
+        }
+
+        /* Colors for sentiments */
+        .POSITIVE {
+            background-color: #d4edda;
+            border-bottom: 2px solid #28a745;
+        }
+        .NEGATIVE {
+            background-color: #f8d7da;
+            border-bottom: 2px solid #dc3545;
+        }
+        .NEUTRAL {
+            background-color: #fff3cd;
+            border-bottom: 2px solid #ffc107;
+        }
+
+        /* Popup Menu */
+        #popup-menu {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000; padding: 10px;
+            border-radius: 5px;
+            width: 300px;
+        }
+        .popup-section {
+            margin-bottom: 10px;
+        }
+        .popup-label {
+            font-weight: bold;
+            font-size: 12px;
+            color: #555; display:
+            block; margin-bottom: 5px;
+        }
+        .chip-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .chip {
+            padding: 5px 10px;
+            background: #e9ecef;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .chip:hover {
+            background: #85c2ff;
+        }
+        .chip.selected {
+            background: #007bff;
+            color: white;
+        }
+
+        .sentiment-btn {
+            width: 100%;
+            margin-top: 5px;
+            padding: 5px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+        .sentiment-btn:hover {
+            background-color: #f0f0f0;
+        }
+        .pos {
+            color: green;
+        }
+        .neg {
+            color: red;
+        }
+        .neu {
+            color: orange;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 1000px;
+            border-radius: 8px;
+        }
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-modal:hover { color: black; }
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .chart-box {
+            width: 45%;
+            min-width: 300px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .chart-box.full-width {
+            width: 95%;
+        }
+        #page-input, #search-id {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Công cụ Gán nhãn ABSA</h2>
+        <div class="controls">
+        <div></div>
+        <div>
+            <button class="secondary" onclick="openStatsModal()">Xem EDA</button>
+            </div>
+        </div>
+
+        <div id="stats-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeStatsModal()">&times;</span>
+                <h2>Thống kê Dữ liệu (EDA)</h2>
+                <p id="stats-summary"></p>
+                <!-- test protect branch rule set -->
+                <div class="chart-container">
+                    <div class="chart-box">
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <canvas id="aspectCountChart"></canvas>
+                    </div>
+                    <div class="chart-box full-width">
+                        <canvas id="breakdownChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <div>
+                <button id="prev-btn" class="secondary" onclick="navigate(-1)">Previous</button>
+                <!-- <div style="margin: 0 10px;"> -->
+                    <span id="page-info" style="margin: 0 10px;">Item 1/1</span>
+                    <span style="margin-left: 20px;">Item</span>
+                    <input type="number" id="page-input" min="1" max="1" value="1" style="width: 60px; margin: 0 5px;" onchange="goToPage()">
+                    <span>/</span>
+                    <span id="total-items" style="margin: 0 10px;">1</span>
+                <!-- </div> -->
+                <button id="next-btn" class="secondary" onclick="navigate(1)">Next</button>
+                <span id="annotated-info" style="margin-left: 20px; color: #007bff;">Annotated: 0</span>
+            </div>
+            <div>
+                <!-- <button class="danger" onclick="resetAllLabels()">Xóa sạch Data</button> -->
+                <button id="edit-mode-btn" onclick="toggleEditMode()">Sửa Text</button>
+                <button onclick="saveCurrentItem()">Lưu</button>
+            </div>
+        </div>
+        <div class="controls" style="margin-top: 10px;">
+            <div>
+                <input type="number" id="search-id" placeholder="ID" onkeydown="if(event.key==='Enter') searchById()">
+                <button onclick="searchById()">Search by ID</button>
+            </div>
+        </div>
+
+        <div id="text-display" onmouseup="handleTextSelection()"></div>
+        <textarea id="text-editor"></textarea>
+
+        <div style="margin-top: 20px;">
+            <h3>Danh sách nhãn:</h3>
+            <ul id="label-list"></ul>
+        </div>
+    </div>
+
+    <div id="popup-menu">
+        <div class="popup-section">
+            <span class="popup-label">ASPECT</span>
+            <div class="chip-container" id="aspect-options"></div>
+        </div>
+        <div class="popup-section">
+            <span class="popup-label">SENTIMENT</span>
+            <div class="chip-container" id="sentiment-options"></div>
+        </div>
+        <div style="text-align: right; margin-top:10px;">
+            <button class="secondary" onclick="closePopup()" style="padding: 4px 8px; font-size: 16px;">Hủy</button>
+            <button onclick="confirmLabel()" style="padding: 4px 8px; font-size: 16px;">OK</button>
+        </div>
+    </div>
+
+    <script>
+        let dataset = [];
+        let currentIndex = 0;
+        let config = {};
+        let currentSelectionRange = null;
+        let tempSelection = { start: 0, end: 0, text: "" };
+
+        // Edit status
+        let isEditing = false;
+        let selectedAspect = null;
+        let selectedSentiment = null;
+
+        let sentimentChartInstance = null;
+        let aspectChartInstance = null;
+        let breakdownChartInstance = null;
+
+        // Update the init function to call loadItem after retrieving the data.
+        async function init() {
+            try {
+                const configRes = await fetch('/api/config');
+                config = await configRes.json();
+                renderConfigOptions();
+
+                const dataRes = await fetch('/api/data');
+                dataset = await dataRes.json();
+
+                const countRes = await fetch('/api/annotated-count');
+                const countData = await countRes.json();
+                document.getElementById('annotated-info').innerText = `Annotated: ${countData.count}`;
+
+                loadItem(0);
+
+            } catch (error) {
+                console.error("Error initializing the tool:", error);
+            }
+        }
+
+        // Function to redirect to a specific page
+        function goToPage() {
+            const input = document.getElementById('page-input');
+            const targetIndex = parseInt(input.value) - 1;
+
+            if (isNaN(targetIndex) || targetIndex < 0) {
+                input.value = 1;
+                return;
+            }
+
+            if (targetIndex >= dataset.length) {
+                input.value = dataset.length;
+                return;
+            }
+
+            if (targetIndex !== currentIndex) {
+                saveCurrentItem().then(() => {
+                    loadItem(targetIndex);
+                });
+            }
+        }
+
+        // Function to search by ID
+        function searchById() {
+            const id = parseInt(document.getElementById('search-id').value);
+            if (isNaN(id)) {
+                alert("Please enter a valid ID");
+                return;
+            }
+            const index = dataset.findIndex(item => item.id === id);
+            if (index !== -1) {
+                saveCurrentItem().then(() => {
+                    loadItem(index);
+                });
+            } else {
+                alert("ID not found");
+            }
+        }
+
+        function renderConfigOptions() {
+            const aspectDiv = document.getElementById('aspect-options');
+            config.aspects.forEach(asp => {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.innerText = asp;
+                chip.onclick = () => selectOption('aspect', asp, chip);
+                aspectDiv.appendChild(chip);
+            });
+
+            const sentDiv = document.getElementById('sentiment-options');
+            config.sentiments.forEach(sent => {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.innerText = sent;
+                chip.onclick = () => selectOption('sentiment', sent, chip);
+                sentDiv.appendChild(chip);
+            });
+        }
+
+        // Update the loadItem function to synchronize the page number input field.
+        function loadItem(index) {
+            if (index < 0 || index >= dataset.length) return;
+            currentIndex = index;
+
+            const item = dataset[currentIndex];
+            document.getElementById('page-info').innerText = `ID: ${item.id}`;
+            document.getElementById('page-input').value = currentIndex + 1;
+            document.getElementById('page-input').max = dataset.length;
+            document.getElementById('total-items').innerText = dataset.length;
+
+            document.getElementById('text-display').innerText = item.text;
+            document.getElementById('text-editor').value = item.text;
+
+            renderHighlights();
+            renderLabelList();
+
+            document.getElementById('prev-btn').disabled = (currentIndex <= 0);
+            document.getElementById('next-btn').disabled = (currentIndex >= dataset.length - 1);
+        }
+
+        function navigate(step) {
+            saveCurrentItem().then(() => {
+                loadItem(currentIndex + step);
+            });
+        }
+
+        function renderHighlights() {
+            const displayDiv = document.getElementById('text-display');
+            const item = dataset[currentIndex];
+            const text = item.text;
+            let labels = item.labels || [];
+
+            labels.sort((a, b) => a[0] - b[0]);
+
+            let html = "";
+            let lastIndex = 0;
+
+            labels.forEach((lbl, idx) => {
+                const [start, end, tag] = lbl;
+                const sentiment = tag.split('#')[1];
+
+                html += text.substring(lastIndex, start);
+                html += `<span class="highlight ${sentiment}" data-label="${tag}" onclick="removeLabel(${idx})">${text.substring(start, end)}</span>`;
+                lastIndex = end;
+            });
+
+            html += text.substring(lastIndex);
+            displayDiv.innerHTML = html;
+        }
+
+        function renderLabelList() {
+            const list = document.getElementById('label-list');
+            list.innerHTML = '';
+            const labels = dataset[currentIndex].labels || [];
+            labels.forEach((lbl, idx) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<b>${lbl[2]}</b>: "${dataset[currentIndex].text.substring(lbl[0], lbl[1])}" <button class="danger" style="font-size:10px; padding:2px 5px;" onclick="removeLabel(${idx})">X</button>`;
+                list.appendChild(li);
+            });
+        }
+
+        function handleTextSelection() {
+            if (isEditing) return;
+
+            const selection = window.getSelection();
+            if (selection.toString().length === 0) return;
+
+
+            const range = selection.getRangeAt(0);
+            const preSelectionRange = range.cloneRange();
+            preSelectionRange.selectNodeContents(document.getElementById("text-display"));
+            preSelectionRange.setEnd(range.startContainer, range.startOffset);
+
+            const start = preSelectionRange.toString().length;
+            const end = start + selection.toString().length;
+            const text = selection.toString();
+
+            if (start === end) return;
+
+            tempSelection = { start, end, text };
+
+            const rect = range.getBoundingClientRect();
+            showPopup(rect.left, rect.bottom + window.scrollY);
+        }
+
+        function showPopup(x, y) {
+            const popup = document.getElementById('popup-menu');
+            popup.style.display = 'block';
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+
+            selectedAspect = null;
+            selectedSentiment = null;
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+        }
+
+        function closePopup() {
+            document.getElementById('popup-menu').style.display = 'none';
+            window.getSelection().removeAllRanges();
+        }
+
+        function selectOption(type, value, element) {
+            if (type === 'aspect') {
+                selectedAspect = value;
+                element.parentNode.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            } else {
+                selectedSentiment = value;
+                element.parentNode.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            }
+            element.classList.add('selected');
+        }
+
+        function confirmLabel() {
+            if (!selectedAspect || !selectedSentiment) {
+                alert("Vui lòng chọn cả Aspect và Sentiment");
+                return;
+            }
+
+            const tag = `${selectedAspect}#${selectedSentiment}`;
+            const newLabel = [tempSelection.start, tempSelection.end, tag];
+
+            if (!dataset[currentIndex].labels) dataset[currentIndex].labels = [];
+            dataset[currentIndex].labels.push(newLabel);
+
+            closePopup();
+            renderHighlights();
+            renderLabelList();
+        }
+
+        function removeLabel(index) {
+            if (confirm("Xóa nhãn này?")) {
+                dataset[currentIndex].labels.splice(index, 1);
+                renderHighlights();
+                renderLabelList();
+            }
+        }
+
+        function toggleEditMode() {
+            isEditing = !isEditing;
+            const display = document.getElementById('text-display');
+            const editor = document.getElementById('text-editor');
+            const btn = document.getElementById('edit-mode-btn');
+
+            if (isEditing) {
+                display.style.display = 'none';
+                editor.style.display = 'block';
+                editor.value = dataset[currentIndex].text;
+                btn.innerText = "Xong";
+                btn.classList.add('highlight-btn');
+            } else {
+                const newText = editor.value;
+                if (newText !== dataset[currentIndex].text) {
+                    // if (confirm("Thay đổi text sẽ xóa toàn bộ nhãn cũ của câu này. Tiếp tục?")) {
+                        dataset[currentIndex].text = newText;
+                        dataset[currentIndex].labels = [];
+                    // } else {
+                    //     editor.value = dataset[currentIndex].text;
+                    // }
+                }
+
+                display.style.display = 'block';
+                editor.style.display = 'none';
+                btn.innerText = "Sửa Text";
+                btn.classList.remove('highlight-btn');
+                renderHighlights();
+                renderLabelList();
+            }
+        }
+
+        async function saveCurrentItem() {
+            const item = dataset[currentIndex];
+            await fetch('/api/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+            console.log("Saved");
+
+            // Update annotated count
+            const countRes = await fetch('/api/annotated-count');
+            const countData = await countRes.json();
+            document.getElementById('annotated-info').innerText = `Annotated: ${countData.count}`;
+        }
+
+        async function resetAllLabels() {
+            if (!confirm("CẢNH BÁO NGUY HIỂM!\n\nHành động này sẽ XÓA SẠCH toàn bộ nhãn (labels) của TẤT CẢ các câu trong bộ dữ liệu.\n\nBạn có chắc chắn muốn làm điều này không?")) {
+                return;
+            }
+
+            if (!confirm("Xác nhận lần 2: Dữ liệu sau khi xóa sẽ KHÔNG THỂ khôi phục.\n\nBạn vẫn muốn tiếp tục?")) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/reset-all', { method: 'POST' });
+                if (res.ok) {
+                    alert("Đã xóa toàn bộ nhãn thành công!");
+
+                    const dataRes = await fetch('/api/data');
+                    dataset = await dataRes.json();
+
+                    const countRes = await fetch('/api/annotated-count');
+                    const countData = await countRes.json();
+                    document.getElementById('annotated-info').innerText = `Annotated: ${countData.count}`;
+
+                    loadItem(currentIndex);
+                } else {
+                    alert("Có lỗi xảy ra phía server.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Lỗi kết nối.");
+            }
+        }
+
+        async function openStatsModal() {
+            document.getElementById('stats-modal').style.display = 'block';
+            document.getElementById('stats-modal').style.display = 'block';
+
+            const res = await fetch('/api/stats');
+            const stats = await res.json();
+
+            document.getElementById('stats-summary').innerHTML = `
+                <strong>Tổng số câu:</strong> ${stats.total_sentences} |
+                <strong>Đã gán nhãn:</strong> ${stats.annotated_count} |
+                <strong>Tiến độ:</strong> ${((stats.annotated_count/stats.total_sentences)*100).toFixed(1)}%
+            `;
+
+            renderCharts(stats);
+        }
+
+        function closeStatsModal() {
+            document.getElementById('stats-modal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('stats-modal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function renderCharts(stats) {
+            // Destroy old charts if exists to avoid overlap
+            if(sentimentChartInstance) sentimentChartInstance.destroy();
+            if(aspectChartInstance) aspectChartInstance.destroy();
+            if(breakdownChartInstance) breakdownChartInstance.destroy();
+
+            // 1. PIE CHART: Sentiment Distribution
+            const sentCtx = document.getElementById('sentimentChart').getContext('2d');
+            sentimentChartInstance = new Chart(sentCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['POSITIVE', 'NEGATIVE', 'NEUTRAL'],
+                    datasets: [{
+                        data: [
+                            stats.sentiment_counts['POSITIVE'] || 0,
+                            stats.sentiment_counts['NEGATIVE'] || 0,
+                            stats.sentiment_counts['NEUTRAL'] || 0
+                        ],
+                        backgroundColor: ['#28a745', '#dc3545', '#ffc107']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: { display: true, text: 'Tổng quan Sentiment' }
+                    }
+                }
+            });
+
+            // Prepare Data for Bar Charts
+            // Sort aspects by frequency
+            const sortedAspects = Object.keys(stats.aspect_counts).sort((a,b) => stats.aspect_counts[b] - stats.aspect_counts[a]);
+            const aspectCounts = sortedAspects.map(k => stats.aspect_counts[k]);
+
+            // 2. BAR CHART: Aspect Frequency
+            const aspCtx = document.getElementById('aspectCountChart').getContext('2d');
+            aspectChartInstance = new Chart(aspCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedAspects,
+                    datasets: [{
+                        label: 'Số lượng nhãn',
+                        data: aspectCounts,
+                        backgroundColor: '#007bff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: { display: true, text: 'Tần suất xuất hiện Aspect' },
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // 3. STACKED BAR: Breakdown
+            const posData = sortedAspects.map(asp => stats.breakdown[asp]['POSITIVE'] || 0);
+            const negData = sortedAspects.map(asp => stats.breakdown[asp]['NEGATIVE'] || 0);
+            const neuData = sortedAspects.map(asp => stats.breakdown[asp]['NEUTRAL'] || 0);
+
+            const breakCtx = document.getElementById('breakdownChart').getContext('2d');
+            breakdownChartInstance = new Chart(breakCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedAspects,
+                    datasets: [
+                        { label: 'Positive', data: posData, backgroundColor: '#28a745' },
+                        { label: 'Neutral', data: neuData, backgroundColor: '#ffc107' },
+                        { label: 'Negative', data: negData, backgroundColor: '#dc3545' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true }
+                    },
+                    plugins: {
+                        title: { display: true, text: 'Phân tích Sentiment theo từng Aspect' }
+                    }
+                }
+            });
+        }
+
+        init();
+
+    </script>
+</body>
+</html>

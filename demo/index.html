@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ABSA Demo - iPhone 16</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Phân tích cảm xúc theo khía cạnh (ABSA)</h1>
+      <select id="productSelect">
+        <option value="iphone16">iPhone 16 (~200 đánh giá)</option>
+        <!-- Thêm sản phẩm khác ở đây nếu muốn -->
+      </select>
+    </header>
+
+    <div class="dashboard">
+      <div class="info">
+        <h2 id="productName">iPhone 16</h2>
+        <p>Tổng số đánh giá: <strong id="totalReviews">0</strong></p>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="radarChart"></canvas>
+      </div>
+
+      <div class="table-container">
+        <table id="aspectTable">
+          <thead>
+            <tr>
+              <th>Khía cạnh</th>
+              <th>Tích cực</th>
+              <th>Trung tính</th>
+              <th>Tiêu cực</th>
+              <th>Cảm xúc chung</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

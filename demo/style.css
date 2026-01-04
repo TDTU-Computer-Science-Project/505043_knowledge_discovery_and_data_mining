@@ -1,0 +1,53 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f5f7fa;
+  color: #333;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+header h1 { color: #2c3e50; margin-bottom: 15px; }
+#productSelect {
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.dashboard {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.info h2 { font-size: 28px; color: #e74c3c; margin-bottom: 10px; }
+
+.chart-container {
+  max-width: 600px;
+  margin: 40px auto;
+}
+
+.table-container {
+  margin-top: 40px;
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+th, td {
+  padding: 12px 15px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+th { background: #3498db; color: white;}
+tr:hover { background: #f8f9fa; }
+
+.positive { color: #27ae60; font-weight: bold; }
+.negative { color: #e74c3c; font-weight: bold; }
+.neutral { color: #95a5a6; font-weight: bold; }
